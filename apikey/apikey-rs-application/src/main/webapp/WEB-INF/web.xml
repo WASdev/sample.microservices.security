@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd" version="3.1">
+	<filter-mapping>
+		<filter-name>APIKey</filter-name>
+		<url-pattern>/secure/Name</url-pattern>
+	</filter-mapping>
+	<filter>
+		<filter-name>APIKey</filter-name>
+		<filter-class>net.wasdev.securemicroservices.common.APIKey</filter-class>
+		<init-param>
+			<!-- shared secret between the sender and receiver -->
+			<param-name>secretVarName</param-name>
+			<param-value>APIKEY</param-value>
+		</init-param>
+		<init-param>
+			<!-- timeout allowed for requests -->
+			<param-name>timeOutMs</param-name>
+			<param-value>5000</param-value>
+		</init-param>
+	</filter>
+</web-app>

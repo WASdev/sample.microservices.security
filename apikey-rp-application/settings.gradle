@@ -1,0 +1,3 @@
+def apikeyCommonDir = file('../apikey-common')
+def rootProjectDescriptor = settings.rootProject
+settings.createProjectDescriptor(rootProjectDescriptor, 'apikey-common', apikeyCommonDir)

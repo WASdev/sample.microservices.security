@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="new server">
+<featureManager>       
+        <feature>ssl-1.0</feature>
+        <feature>jsp-2.2</feature>
+        <feature>servlet-3.0</feature>
+        <feature>appSecurity-2.0</feature>
+        <feature>openidConnectClient-1.0</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="1080"
+                  httpsPort="1081" />
+
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultKeyStore" serverKeyAlias="default"/>
+
+<openidConnectClient id="RP" 	
+    clientId="webapp" 		
+    signatureAlgorithm="RS256"
+    trustAliasName="server"
+    trustStoreRef="defaultKeyStore"
+    scope="openid stock account"
+    authorizationEndpointUrl="https://127.0.0.1:9443/oidc/endpoint/OP/authorize"     
+    tokenEndpointUrl="https://127.0.0.1:9443/oidc/endpoint/OP/token"> 	
+</openidConnectClient>
+
+<keyStore id="defaultKeyStore" password="rpkeystore"/>
+
+    <application type="war" id="testpage" name="testpage" 
+         location="${server.config.dir}/apps/testpage.war">
+        <application-bnd>
+            <security-role name="All Role">
+                <special-subject type="ALL_AUTHENTICATED_USERS" />
+            </security-role>
+        </application-bnd>
+    </application>  
+
+</server>

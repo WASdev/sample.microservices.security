@@ -1,0 +1,129 @@
+apply plugin: 'war'
+apply plugin: 'eclipse-wtp'
+apply plugin: 'maven-publish'
+apply plugin: 'liberty'
+
+ext {
+	libertyBaseDir = project.hasProperty('libertyRoot') ? "${libertyRoot}" : "${project.parent.projectDir}/liberty.runtime"
+	projectLicenseCode = project.hasProperty('libertyLicenseCode') ? "${libertyLicenseCode}" : 'licenseCode'
+}
+
+buildscript {
+	repositories {
+		maven {
+			name = 'Sonatype Nexus Snapshots'
+			url = 'https://oss.sonatype.org/content/repositories/snapshots/'
+		}
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin:1.0-SNAPSHOT'
+		classpath files('gradle/wlp-anttasks.jar')
+	}
+}
+
+//Dependencies
+repositories { mavenCentral(); }
+
+dependencies {
+	providedCompile group:'javax.servlet', name:'javax.servlet-api', version:'3.1.0'
+	providedCompile group:'javax.ws.rs', name:'javax.ws.rs-api', version: '2.0.1'
+	providedCompile group:'javax.json', name:'javax.json-api', version:'1.0'
+}
+
+sourceCompatibility = 1.7
+
+// Set the Eclipse facets to use 3.0 of the Dynamic Web Module
+eclipse.wtp.facet {
+	facets = []
+	facet name: 'jst.java', type: 'fixed'
+	facet name: 'jst.web', type: 'fixed'
+	facet name: 'jst.java', version: '1.7'
+	facet name: 'jst.web', version: '3.0'
+}
+
+// Copy WAR into local server folder.
+task publishWar(dependsOn: ['jar','packaging'], type: Copy) {
+	from(war)
+	into('../access-token-rs-wlpcfg/servers/AccessTokenMicroservice/apps')
+}
+
+liberty {
+	wlpDir = "${libertyBaseDir}/wlp"
+	serverName = 'AccessTokenMicroservice'
+	userDir = '../access-token-rs-wlpcfg'
+
+	install {
+		licenseCode = "${projectLicenseCode}"
+		version = '8.5.5_06'
+		baseDir = "${libertyBaseDir}"
+	}
+
+	packageLiberty {
+		include = 'usr'
+		archive = 'build/libs/AccessTokenRSApp.zip'
+	}
+
+	features {
+		name = ['servlet-3.1','jsp-2.3','openidconnectclient-1.0','openidconnectserver-1.0', 'jsonp-1.0']
+		acceptLicense = true
+		whenFileExists = 'ignore'
+	}
+
+}
+
+publishing {
+	publications {
+		mavenWar(MavenPublication) {
+			version '1.0-SNAPSHOT'
+			groupId 'net.wasdev.wlp.sample'
+			artifactId 'microservices-access-token-rs'
+			from components.web
+		}
+	}
+}
+
+assemble.dependsOn('publishWar')
+
+//because we depends upon liberty api, we must ensure it's installed
+compileJava.dependsOn('setup')
+
+installLiberty.dependsOn(':keystores:installKeyStores')
+
+task setup {
+	// If both license code and Liberty root are set then install liberty using liberty-gradle plugin
+	if(project.hasProperty('libertyLicenseCode')) {
+		println "Using liberty-gradle plugin to install Liberty to location ${libertyBaseDir}"
+		compileJava.dependsOn('installLiberty')
+	}
+	// If only Liberty root is set then we are using a local version
+	else if(!project.hasProperty('libertyLicenseCode') && file("${libertyBaseDir}/wlp/lib/ws-launch.jar").exists()) {
+		println "Using local Liberty install located at ${libertyBaseDir} to package server and run tests"
+	  // If neither license code or Liberty root are set skip steps that require a server
+	}
+	else {
+		println 'No liberty install specified'
+		println 'Error.. cannot compile liberty api'
+	}
+}
+
+task packaging {
+	// If both license code and Liberty root are set then install liberty using liberty-gradle plugin
+	if(project.hasProperty('libertyLicenseCode')) {
+		println "Using liberty-gradle plugin to install Liberty to location ${libertyBaseDir}"
+		println 'Packaging Access Token RS server.'
+		assemble.dependsOn('libertyPackage')
+		libertyPackage.dependsOn(['installFeature','publishWar'])
+		installFeature.dependsOn('installLiberty')
+	// If only Liberty root is set then we are using a local version
+	} else if(!project.hasProperty('libertyLicenseCode') && file("${libertyBaseDir}/wlp/lib/ws-launch.jar").exists()) {
+		println "Using local Liberty install located at ${libertyBaseDir} to package server and run tests"
+		assemble.dependsOn('libertyPackage')
+		libertyPackage.dependsOn('publishWar')
+		check.dependsOn('fvt')
+	// If neither license code or Liberty root are set skip steps that require a server
+	} else {
+		println 'No liberty install specified'
+		println 'Skipping packaging server and functional tests'
+	}
+}

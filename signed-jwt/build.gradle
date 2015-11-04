@@ -1,0 +1,18 @@
+apply plugin: 'eclipse'
+
+subprojects {
+  apply plugin: 'eclipse'
+}
+
+defaultTasks 'noop'
+
+task noop << {
+}
+
+task start (dependsOn: [':signed-jwt-op-wlpcfg:libertyStart',':signed-jwt-rp-application:libertyStart',':signed-jwt-rs-application:libertyStart']) << {
+    println 'Started servers for signed-jwt'
+}
+
+task stop (dependsOn: [':signed-jwt-op-wlpcfg:libertyStop',':signed-jwt-rp-application:libertyStop',':signed-jwt-rs-application:libertyStop']) << {
+    println 'Stopped servers for signed-jwt'
+}

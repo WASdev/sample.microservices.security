@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="signed jwt rp server">
+  <featureManager>
+          <feature>ssl-1.0</feature>
+          <feature>jsp-2.3</feature>
+          <feature>jndi-1.0</feature>
+          <feature>servlet-3.1</feature>
+          <feature>appSecurity-2.0</feature>
+          <feature>openidConnectClient-1.0</feature>
+  </featureManager>
+
+  <httpEndpoint id="defaultHttpEndpoint"
+                httpPort="9201"
+                httpsPort="9601" />
+
+  <!-- default ssl config..
+        The keystore here must have a trust key for the OP ssl certificate.
+  -->
+  <keyStore id="defaultKeyStore" password="rpkeystore" location="rpkeystore.jks"/>
+  <keyStore id="defaultTrustStore" password="rptruststore" location="rpssltruststore.jks"/>
+  <!-- Configure the default keystore to trust the OP -->
+  <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" serverKeyAlias="rpsslkey"/>
+
+  <!-- oidc trust store -->
+  <keyStore id="oidctruststore" password="oidctruststore" location="oidctruststore.jks"/>
+
+
+  <jndiEntry jndiName="trustKeyStore" value="${server.config.dir}/resources/security/oidctruststore.jks"/>
+  <jndiEntry jndiName="trustKeyStorePw" value="rpkeystore"/>
+  <jndiEntry jndiName="trustKeyStoreAlias" value="rpsslkey"/>
+  <jndiEntry jndiName="signingKeyStore" value="${server.config.dir}/resources/security/rpkeystore.jks"/>
+  <jndiEntry jndiName="signingKeyStorePw" value="oidctruststore"/>
+  <jndiEntry jndiName="signingKeyStoreAlias" value="oidckey"/>
+
+
+  <openidConnectClient id="RP"
+      clientId="rp"
+      clientSecret="fish"
+      signatureAlgorithm="RS256"
+      trustAliasName="oidckey"
+      trustStoreRef="oidctruststore"
+      scope="openid stock account"
+      authorizationEndpointUrl="https://127.0.0.1:9600/oidc/endpoint/OP/authorize"
+      tokenEndpointUrl="https://127.0.0.1:9600/oidc/endpoint/OP/token">
+  </openidConnectClient>
+
+  <!-- The app protected by OIDC, the security role enables security for the app,
+       and by default when is oidc security is configured it applies to all
+       secured apps -->
+  <application type="war" id="signed-jwt-rp-application" name="signed-jwt-rp-application"
+       location="${server.config.dir}/apps/signed-jwt-rp-application.war">
+      <application-bnd>
+          <security-role name="All Role">
+              <special-subject type="ALL_AUTHENTICATED_USERS" />
+          </security-role>
+      </application-bnd>
+  </application>
+
+</server>

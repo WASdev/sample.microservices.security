@@ -1,0 +1,1 @@
+include 'keystores','access-token','access-token-op-wlpcfg','access-token-rp-wlpcfg','access-token-rp-application','access-token-rs-wlpcfg','access-token-rs-application','signed-jwt','signed-jwt-op-wlpcfg','signed-jwt-rp-wlpcfg','signed-jwt-rp-application','signed-jwt-rs-wlpcfg','signed-jwt-rs-application'

@@ -1,0 +1,10 @@
+apply plugin: 'eclipse'
+
+subprojects {
+  apply plugin: 'eclipse'
+}
+
+task clean (type: Delete){
+	delete fileTree(dir: 'liberty.runtime', includes: ['**/*'])
+  delete ('liberty.runtime')
+}

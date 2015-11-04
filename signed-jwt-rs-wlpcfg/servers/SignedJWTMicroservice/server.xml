@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="signed jwt rs server">
+<featureManager>
+        <feature>ssl-1.0</feature>
+        <feature>jsp-2.2</feature>
+        <feature>servlet-3.0</feature>
+        <feature>appSecurity-2.0</feature>
+        <feature>openidConnectClient-1.0</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9202"
+                  httpsPort="9602" />
+
+<!-- default ssl config.. The trust store here does not need anything special.
+-->
+<keyStore id="defaultKeyStore" password="rskeystore" location="rskeystore.jks"/>
+<keyStore id="defaultTrustStore" password="rstruststore" location="rsssltruststore.jks"/>
+<!-- Configure the default keystore -->
+<ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" serverKeyAlias="rssslkey"/>
+
+<!-- declare a reference to the trustKeyStore the app will use to verify the signed jwt-->
+<jndiEntry jndiName="trustKeyStore" value="${server.config.dir}/resources/security/rsssltruststore.jks"/>
+<jndiEntry jndiName="trustKeyStorePw" value="rstruststore"/>
+<jndiEntry jndiName="trustKeyStoreAlias" value="rpsslkey"/>
+
+<!-- The microservice, not protected, because it will perform it's own
+     auth based on the signed jwt flowed to it as part of the request -->
+     <application type="war" id="signed-jwt-rs-application" name="signed-jwt-rs-application"
+          location="${server.config.dir}/apps/signed-jwt-rs-application.war">
+     </application>
+
+</server>

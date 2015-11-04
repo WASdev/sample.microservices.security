@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="signed jwt op server">
+
+    <!-- Enable features -->
+    <featureManager>
+        <feature>openidConnectServer-1.0</feature>
+        <feature>ssl-1.0</feature>
+        <feature>appSecurity-2.0</feature>
+        <feature>servlet-3.0</feature>
+    </featureManager>
+
+    <!--configure the default keystore for ssl.-->
+    <keyStore id="defaultKeyStore" password="opkeystore" location="opkeystore.jks"/>
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultKeyStore" serverKeyAlias="opsslkey"/>
+
+    <!--configure the keystore used for oidc -->
+    <keyStore id="oidckeystore" password="oidckeystore" location="oidckeystore.jks"/>
+
+    <!-- This is our example user registry.. it has just the one user -->
+    <basicRegistry id="basic" realm="BasicRealm">
+        <user name="user" password="password" />
+    </basicRegistry>
+
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9200"
+                  httpsPort="9600" />
+
+    <!-- This is the OpenID Provider configuration.
+           We're using Asymmetric RS256 signing, so we must supply a
+           keystore and identify which key we should sign with.
+    -->
+    <openidConnectProvider id="OP"
+           oauthProviderRef="Oauth"
+           signatureAlgorithm="RS256"
+           keyStoreRef="oidckeystore"
+           keyAliasName="oidckey">
+    </openidConnectProvider>
+
+    <!-- For simplicity, we're using a client db defined here in the
+          server.xml Here we register the clients that will access the
+          provider. For this example, that's just the RP.
+      -->
+    <oauthProvider id="Oauth">
+        <localStore>
+            <client name="rp"
+                secret="fish"
+                displayname="The user facing webapp"
+                redirect="https://127.0.0.1:9601/oidcclient/redirect/RP"
+                scope="openid stock account"
+                preAuthorizedScope="openid"
+                enabled="true"/>
+        </localStore>
+    </oauthProvider>
+
+    <oauth-roles>
+        <authenticated>
+            <special-subject type="ALL_AUTHENTICATED_USERS" />
+        </authenticated>
+    </oauth-roles>
+
+</server>

@@ -1,0 +1,8 @@
+.gradle/**
+access-token-rs-wlpcfg/servers/AccessTokenMicroservice/resources/security/*
+access-token-rp-wlpcfg/servers/AccessTokenOpenIDRelyingParty/resources/security/*
+access-token-op-wlpcfg/servers/AccessTokenOpenIDProvider/resources/security/*
+signed-jwt-rs-wlpcfg/servers/SignedJWTMicroservice/resources/security/*
+signed-jwt-rp-wlpcfg/servers/SignedJWTOpenIDRelyingParty/resources/security/*
+signed-jwt-op-wlpcfg/servers/SignedJWTOpenIDProvider/resources/security/*
+gradle.properties

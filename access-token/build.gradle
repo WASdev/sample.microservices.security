@@ -1,0 +1,18 @@
+apply plugin: 'eclipse'
+
+subprojects {
+  apply plugin: 'eclipse'
+}
+
+defaultTasks 'noop'
+
+task noop << {
+}
+
+task start (dependsOn: [':access-token-op-wlpcfg:libertyStart',':access-token-rp-application:libertyStart',':access-token-rs-application:libertyStart']) << {
+    println 'Started servers for access-token'
+}
+
+task stop (dependsOn: [':access-token-op-wlpcfg:libertyStop',':access-token-rp-application:libertyStop',':access-token-rs-application:libertyStop']) << {
+    println 'Stopped servers for access-token'
+}

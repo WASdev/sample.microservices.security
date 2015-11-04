@@ -1,0 +1,5 @@
+def apikeyRPDir = file('../apikey-rp-application')
+def apikeyCommonDir = file('../apikey-common')
+def rootProjectDescriptor = settings.rootProject
+settings.createProjectDescriptor(rootProjectDescriptor, 'apikey-rp-application', apikeyRPDir)
+settings.createProjectDescriptor(rootProjectDescriptor, 'apikey-common', apikeyCommonDir)

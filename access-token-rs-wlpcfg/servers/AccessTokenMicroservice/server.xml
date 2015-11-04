@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="access token rs server">
+<featureManager>
+        <feature>ssl-1.0</feature>
+        <feature>jsp-2.3</feature>
+        <feature>jsonp-1.0</feature>
+        <feature>servlet-3.1</feature>
+        <feature>appSecurity-2.0</feature>
+        <feature>openidConnectClient-1.0</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9002"
+                  httpsPort="9402" />
+
+<!-- default ssl config..
+      The keystore here must have a trust key for the OP ssl certificate.
+-->
+<keyStore id="defaultKeyStore" password="rskeystore" location="rskeystore.jks"/>
+<keyStore id="defaultTrustStore" password="rstruststore" location="rsssltruststore.jks"/>
+<!-- Configure the default keystore to trust the OP -->
+<ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" serverKeyAlias="rssslkey"/>
+
+<!-- oidc client info for the app -->
+<jndiEntry jndiName="oidcClientId" value="rs"/>
+<jndiEntry jndiName="oidcClientPw" value="pies"/>
+<jndiEntry jndiName="introspectUrl" value="https://127.0.0.1:9400/oidc/endpoint/OP/introspect"/>
+
+<!-- The microservice, not protected, because it will perform it's own
+     auth based on the access token flowed to it as part of the request -->
+<application type="war" id="access-token-rs-application" name="access-token-rs-application"
+     location="${server.config.dir}/apps/access-token-rs-application.war">
+</application>
+
+</server>

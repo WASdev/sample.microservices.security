@@ -1,0 +1,503 @@
+import org.gradle.api.tasks.Exec
+
+//Dependencies
+repositories { mavenCentral(); }
+
+task clean (type: Delete) <<{
+	println 'Cleaning up old keystores'
+  file('.').listFiles().findAll().each{
+    if(it.name.endsWith(".jks") || it.name.endsWith(".crt")){
+      println "Removing "+it
+      it.delete()
+    }
+  }
+}
+
+//macro task to allow the other projects to just rely on the keystores being built and installed.
+task installKeyStores(dependsOn: ['installAccessTokenOPkeyStores','installAccessTokenRPkeyStores','installAccessTokenRSkeyStores'
+                                 ,'installSignedJWTOPkeyStores','installSignedJWTRPkeyStores','installSignedJWTRSkeyStores']) {
+}
+
+task installAccessTokenOPkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../access-token-op-wlpcfg/servers/AccessTokenOpenIDProvider/resources/security')
+  include('opkeystore.jks')
+  include('oidckeystore.jks')
+	doLast {
+		println "Installed Access Token OP Keystores"
+	}
+}
+
+task installAccessTokenRPkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../access-token-rp-wlpcfg/servers/AccessTokenOpenIDRelyingParty/resources/security')
+  include('rpkeystore.jks')
+  include('oidctruststore.jks')
+  include('rpssltruststore.jks')
+	doLast {
+		println "Installed Access Token RP Keystores"
+	}
+}
+
+task installAccessTokenRSkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../access-token-rs-wlpcfg/servers/AccessTokenMicroservice/resources/security')
+  include('rskeystore.jks')
+  include('oidctruststore.jks')
+  include('rsssltruststore.jks')
+	doLast {
+		println "Installed Access Token RS Keystores"
+	}
+}
+
+task installSignedJWTOPkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../signed-jwt-op-wlpcfg/servers/SignedJWTOpenIDProvider/resources/security')
+  include('opkeystore.jks')
+  include('oidckeystore.jks')
+	doLast {
+		println "Installed Signed JWT OP Keystores"
+	}
+}
+
+task installSignedJWTRPkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../signed-jwt-rp-wlpcfg/servers/SignedJWTOpenIDRelyingParty/resources/security')
+  include('rpkeystore.jks')
+  include('oidctruststore.jks')
+  include('rpssltruststore.jks')
+	doLast {
+		println "Installed Signed JWT RP Keystores"
+	}
+}
+
+task installSignedJWTRSkeyStores(dependsOn: 'createKeyStores', type:Copy){
+  from('.')
+	into('../signed-jwt-rs-wlpcfg/servers/SignedJWTMicroservice/resources/security')
+  include('rskeystore.jks')
+	include('rsssltruststore.jks')
+	doLast {
+		println "Installed Signed JWT RS Keystores"
+	}
+}
+
+//task lists all the keystores we plan to build.
+task createKeyStores(dependsOn: ['generateOPSSLKeyStore','generateRPSSLKeyStore','generateRPSSLTrustStore','generateRSSSLKeyStore','generateRSSSLTrustStore','generateOPOIDCKeyStore','generateOIDCTrustStore']) {
+}
+
+//OP SSL Key, used to secure the SSL port on the OP
+task generateOPSSLKeyStore(type:Exec) {
+	def inputFile = file('build.gradle')
+	def outputFile = file('opkeystore.jks')
+	//println("OPSSLKeyStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-genkey"
+  kargs += "-alias"
+  kargs += "opsslkey"
+  kargs += "-storepass"
+  kargs += "opkeystore"
+  kargs += "-keypass"
+  kargs += "opkeystore"
+  kargs += "-keystore"
+  kargs += "opkeystore.jks"
+  kargs += "-keyalg"
+  kargs += "RSA"
+  kargs += "-sigalg"
+  kargs += "SHA1withRSA"
+  kargs += "-validity"
+  kargs += "365"
+  kargs += "-dname"
+  kargs += "CN=opssl,OU=unknown,O=unknown,L=unknown,ST=unknown,C=CA"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Generating OP SSL KeyStore"
+    println "result "+execResult
+    println "stdOut "+standardOutput
+  }
+}
+//export the public key so it can be imported.
+task extractOPSSLPublicKey(type:Exec, dependsOn: 'generateOPSSLKeyStore') {
+	def inputFile = file('opkeystore.jks')
+	def outputFile = file('opsslpublickey.crt')
+	//println("OPSSLPublicKey Extract Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-export"
+  kargs += "-alias"
+  kargs += "opsslkey"
+  kargs += "-storepass"
+  kargs += "opkeystore"
+  kargs += "-keypass"
+  kargs += "opkeystore"
+  kargs += "-keystore"
+  kargs += "opkeystore.jks"
+  kargs += "-file"
+  kargs += "opsslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Extracted OP SSL Public Key"
+    println "result "+execResult
+    println "stdOut "+standardOutput
+  }
+}
+task importOPSSLPublicKeyToRPTrustStore(type:Exec, dependsOn: ['extractOPSSLPublicKey']) {
+	def inputFile = file('opsslpublickey.crt')
+	//don't use the trust store as output file, because it's updated more than once.
+	//the real output dep on the truststore is declared by generateRPSSLTrustStore
+	def outputFile = file('opsslpublickey.crt')
+	//println("OPSSLPublicKeyImportToRPTrustStore Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+	def kargs = []
+  kargs += "-import"
+  kargs += "-noprompt"
+  kargs += "-alias"
+  kargs += "opsslkey"
+  kargs += "-storepass"
+  kargs += "rptruststore"
+  kargs += "-keypass"
+  kargs += "rptruststore"
+  kargs += "-keystore"
+  kargs += "rpssltruststore.jks"
+  kargs += "-file"
+  kargs += "opsslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Imported OP SSL Public Key to RP TrustStore"
+    println "result "+execResult
+    println "stdOut "+standardOutput
+  }
+}
+task importRSSSLPublicKeyToRPTrustStore(type:Exec, dependsOn: ['extractRSSSLPublicKey']) {
+	def inputFile = file('rssslpublickey.crt')
+  //don't use the trust store as output file, because it's updated more than once.
+	//the real output dep on the truststore is declared by generateRPSSLTrustStore
+	def outputFile = file('rssslpublickey.crt')
+	//println("RSSSLPublicKeyImportToRPTrustStore Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-import"
+  kargs += "-noprompt"
+  kargs += "-alias"
+  kargs += "rssslkey"
+  kargs += "-storepass"
+  kargs += "rptruststore"
+  kargs += "-keypass"
+  kargs += "rptruststore"
+  kargs += "-keystore"
+  kargs += "rpssltruststore.jks"
+  kargs += "-file"
+  kargs += "rssslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Imported RS SSL Public Key to RP TrustStore"
+    println "result "+execResult
+  }
+}
+//RP SSL Trust store, must trust OP SSL Key, RS SSL Key
+task generateRPSSLTrustStore(dependsOn: ['importOPSSLPublicKeyToRPTrustStore','importRSSSLPublicKeyToRPTrustStore']){
+	def inputFile = [ file('opsslpublickey.crt') , file('rssslpublickey.crt') ]
+	def outputFile = file('rpssltruststore.jks')
+	//println("RPSSLTrustStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+}
+//RP SSL KeyStore used to secure SSL port on the RP
+task generateRPSSLKeyStore(type:Exec) {
+	def inputFile = file('build.gradle')
+	def outputFile = file('rpkeystore.jks')
+	//println("RPSSLKeyStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-genkey"
+  kargs += "-alias"
+  kargs += "rpsslkey"
+  kargs += "-storepass"
+  kargs += "rpkeystore"
+  kargs += "-keypass"
+  kargs += "rpkeystore"
+  kargs += "-keystore"
+  kargs += "rpkeystore.jks"
+  kargs += "-keyalg"
+  kargs += "RSA"
+  kargs += "-sigalg"
+  kargs += "SHA1withRSA"
+  kargs += "-validity"
+  kargs += "365"
+  kargs += "-dname"
+  kargs += "CN=rpssl,OU=unknown,O=unknown,L=unknown,ST=unknown,C=CA"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Generating RS SSL KeyStore"
+    println "result "+execResult
+  }
+}
+//RS SSL KeyStore used to secure SSL port on the RS
+task generateRSSSLKeyStore(type:Exec) {
+	def inputFile = file('build.gradle')
+	def outputFile = file('rskeystore.jks')
+	//println("RSSSLKeyStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-genkey"
+  kargs += "-alias"
+  kargs += "rssslkey"
+  kargs += "-storepass"
+  kargs += "rskeystore"
+  kargs += "-keypass"
+  kargs += "rskeystore"
+  kargs += "-keystore"
+  kargs += "rskeystore.jks"
+  kargs += "-keyalg"
+  kargs += "RSA"
+  kargs += "-sigalg"
+  kargs += "SHA1withRSA"
+  kargs += "-validity"
+  kargs += "365"
+  kargs += "-dname"
+  kargs += "CN=rsssl,OU=unknown,O=unknown,L=unknown,ST=unknown,C=CA"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Generating RS SSL KeyStore"
+    println "result "+execResult
+  }
+}
+//export the public key so it can be imported.
+task extractRSSSLPublicKey(type:Exec, dependsOn: 'generateRSSSLKeyStore') {
+	def inputFile = file('rskeystore.jks')
+	def outputFile = file('rssslpublickey.crt')
+	//println("RSSSLPublicKey Extract Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-export"
+  kargs += "-alias"
+  kargs += "rssslkey"
+  kargs += "-storepass"
+  kargs += "rskeystore"
+  kargs += "-keypass"
+  kargs += "rskeystore"
+  kargs += "-keystore"
+  kargs += "rskeystore.jks"
+  kargs += "-file"
+  kargs += "rssslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Extracting RS SSL Public Key"
+    println "result "+execResult
+  }
+}
+//export the public key so it can be imported.
+task extractRPSSLPublicKey(type:Exec, dependsOn: 'generateRPSSLKeyStore') {
+	def inputFile = file('rpkeystore.jks')
+	def outputFile = file('rpsslpublickey.crt')
+	//println("RPSSLPublicKey Extract Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-export"
+  kargs += "-alias"
+  kargs += "rpsslkey"
+  kargs += "-storepass"
+  kargs += "rpkeystore"
+  kargs += "-keypass"
+  kargs += "rpkeystore"
+  kargs += "-keystore"
+  kargs += "rpkeystore.jks"
+  kargs += "-file"
+  kargs += "rpsslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Extracting RR SSL Public Key"
+    println "result "+execResult
+  }
+}
+//RS SSL Trust store, must trust OP SSL Key, RS SSL Key
+task generateRSSSLTrustStore(dependsOn: ['importOPSSLPublicKeyToRSTrustStore','importRPSSLPublicKeyToRSTrustStore']){
+	def inputFile = [ file('opsslpublickey.crt') , file('rpsslpublickey.crt') ]
+	def outputFile = file('rsssltruststore.jks')
+	println("RSSSLTrustStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+}
+task importOPSSLPublicKeyToRSTrustStore(type:Exec, dependsOn: 'extractOPSSLPublicKey'){
+	def inputFile = file('opsslpublickey.crt')
+	//dont use the truststore as an output here, because it's updated more than once
+	//the real output dep on the truststore is declared by generateRSSSLTrustStore
+	def outputFile = file('opsslpublickey.crt')
+	//println("importOPSSLPublicKeyToRSTrustStore Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-import"
+  kargs += "-noprompt"
+  kargs += "-alias"
+  kargs += "opsslkey"
+  kargs += "-storepass"
+  kargs += "rstruststore"
+  kargs += "-keypass"
+  kargs += "rstruststore"
+  kargs += "-keystore"
+  kargs += "rsssltruststore.jks"
+  kargs += "-file"
+  kargs += "opsslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Imported OP SSL Public Key to RS TrustStore"
+    println "result "+execResult
+  }
+}
+task importRPSSLPublicKeyToRSTrustStore(type:Exec, dependsOn: 'extractRPSSLPublicKey'){
+	def inputFile = file('rpsslpublickey.crt')
+	//dont use the truststore as an output here, because it's updated more than once
+	//the real output dep on the truststore is declared by generateRSSSLTrustStore
+	def outputFile = file('rpsslpublickey.crt')
+	//println("importRPSSLPublicKeyToRSTrustStore Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-import"
+  kargs += "-noprompt"
+  kargs += "-alias"
+  kargs += "rpsslkey"
+  kargs += "-storepass"
+  kargs += "rstruststore"
+  kargs += "-keypass"
+  kargs += "rstruststore"
+  kargs += "-keystore"
+  kargs += "rsssltruststore.jks"
+  kargs += "-file"
+  kargs += "rpsslpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Imported RP SSL Public Key to RS TrustStore"
+    println "result "+execResult
+  }
+}
+//OIDC OP Keystore, used to sign the id tokens
+task generateOPOIDCKeyStore(type:Exec) {
+	def inputFile = file('build.gradle')
+	def outputFile = file('oidckeystore.jks')
+	//println("OPOIDCKeyStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-genkey"
+  kargs += "-alias"
+  kargs += "oidckey"
+  kargs += "-storepass"
+  kargs += "oidckeystore"
+  kargs += "-keypass"
+  kargs += "oidckeystore"
+  kargs += "-keystore"
+  kargs += "oidckeystore.jks"
+  kargs += "-keyalg"
+  kargs += "RSA"
+  kargs += "-sigalg"
+  kargs += "SHA1withRSA"
+  kargs += "-validity"
+  kargs += "365"
+  kargs += "-dname"
+  kargs += "CN=oidc,OU=unknown,O=unknown,L=unknown,ST=unknown,C=CA"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Generating OIDC KeyStore"
+    println "result "+execResult
+  }
+}
+//export the public key so it can be imported.
+task extractOPOIDCPublicKey(type:Exec, dependsOn: 'generateOPOIDCKeyStore') {
+	def inputFile = file('oidckeystore.jks')
+	def outputFile = file('oidcpublickey.crt')
+	//println("OPOIDCKeyStore Extract Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-export"
+  kargs += "-alias"
+  kargs += "oidckey"
+  kargs += "-storepass"
+  kargs += "oidckeystore"
+  kargs += "-keypass"
+  kargs += "oidckeystore"
+  kargs += "-keystore"
+  kargs += "oidckeystore.jks"
+  kargs += "-file"
+  kargs += "oidcpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Extracting OIDC Public Key"
+    println "result "+execResult
+  }
+}
+//OIDC RP Trust store, used to verify the id tokens
+task generateOIDCTrustStore(type:Exec, dependsOn: ['extractOPOIDCPublicKey']){
+	def inputFile = file('oidcpublickey.crt')
+	def outputFile = file('oidctruststore.jks')
+	//println("OIDCTrustStore Generation Input : ${inputFile}  Output: ${outputFile}")
+	inputs.file inputFile
+	outputs.files outputFile
+
+  def kargs = []
+  kargs += "-import"
+  kargs += "-noprompt"
+  kargs += "-alias"
+  kargs += "oidckey"
+  kargs += "-storepass"
+  kargs += "oidctruststore"
+  kargs += "-keypass"
+  kargs += "oidctruststore"
+  kargs += "-keystore"
+  kargs += "oidctruststore.jks"
+  kargs += "-file"
+  kargs += "oidcpublickey.crt"
+  executable "${new File(environment['JAVA_HOME'], 'bin').canonicalPath}/keytool"
+  args=kargs
+  standardOutput = new ByteArrayOutputStream();
+  doLast {
+    println "Imported OIDC Public Key to OIDC TrustStore"
+    println "result "+execResult
+  }
+}

@@ -1,0 +1,56 @@
+apply plugin: 'liberty'
+
+ext {
+	libertyBaseDir = project.hasProperty('libertyRoot') ? "${libertyRoot}" : "${project.parent.projectDir}/liberty.runtime"
+	projectLicenseCode = project.hasProperty('libertyLicenseCode') ? "${libertyLicenseCode}" : 'licenseCode'
+}
+
+task clean (type: Delete) <<{
+	println 'Cleaning up op server'
+	delete fileTree(dir: 'servers', includes: ['**/logs/*', '**/apps/*', '**/workarea/**'])
+	file('servers').listFiles().findAll().each{
+		if(it.name.startsWith(".") && it.isDirectory()){
+			println "Removing "+it
+			it.deleteDir()
+		}else{
+			if(it.isDirectory()){
+				it.listFiles().findAll{it.name.equals("logs")||it.name.equals("workarea")||it.name.equals("apps")}.each{
+					println "Removing "+it
+					it.deleteDir()
+				}
+			}
+		}
+  }
+}
+
+buildscript {
+	repositories {
+		maven {
+			name = 'Sonatype Nexus Snapshots'
+			url = 'https://oss.sonatype.org/content/repositories/snapshots/'
+		}
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin:1.0-SNAPSHOT'
+		classpath files('gradle/wlp-anttasks.jar')
+	}
+}
+
+liberty {
+	wlpDir = "${libertyBaseDir}/wlp"
+	serverName = 'AccessTokenOpenIDProvider'
+	userDir = '.'
+
+	install {
+		licenseCode = "${projectLicenseCode}"
+		version = '8.5.5_06'
+		baseDir = "${libertyBaseDir}"
+	}
+
+	packageLiberty {
+		include = 'usr'
+		archive = 'build/libs/AccessTokenOP.zip'
+	}
+
+}

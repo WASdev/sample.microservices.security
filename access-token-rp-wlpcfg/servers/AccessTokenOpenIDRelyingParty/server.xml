@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="access token rp server">
+<featureManager>
+        <feature>ssl-1.0</feature>
+        <feature>servlet-3.1</feature>
+        <feature>appSecurity-2.0</feature>
+        <feature>openidConnectClient-1.0</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9001"
+                  httpsPort="9401" />
+
+<!-- default ssl config..
+      The keystore here must have a trust key for the OP ssl certificate.
+-->
+<keyStore id="defaultKeyStore" password="rpkeystore" location="rpkeystore.jks"/>
+<keyStore id="defaultTrustStore" password="rptruststore" location="rpssltruststore.jks"/>
+<!-- Configure the default keystore to trust the OP -->
+<ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" serverKeyAlias="rpsslkey"/>
+
+<!-- oidc trust store -->
+<keyStore id="oidctruststore" password="oidctruststore" location="oidctruststore.jks"/>
+
+<!--oidc client config..
+     We must have a secret to obtain a token, and we need a trust store to verify the signing key of the token from the OP.
+     The EndpointUrls must point back to the OP.
+-->
+<openidConnectClient id="RP"
+    clientId="rp"
+    clientSecret="fish"
+    signatureAlgorithm="RS256"
+    trustAliasName="oidckey"
+    trustStoreRef="oidctruststore"
+    scope="openid stock account"
+    authorizationEndpointUrl="https://127.0.0.1:9400/oidc/endpoint/OP/authorize"
+    tokenEndpointUrl="https://127.0.0.1:9400/oidc/endpoint/OP/token">
+</openidConnectClient>
+
+<!-- The app protected by OIDC, the security role enables security for the app,
+     and by default when is oidc security is configured it applies to all
+     secured apps -->
+<application type="war" id="access-token-rp-application" name="access-token-rp-application"
+     location="${server.config.dir}/apps/access-token-rp-application.war">
+    <application-bnd>
+        <security-role name="All Role">
+            <special-subject type="ALL_AUTHENTICATED_USERS" />
+        </security-role>
+    </application-bnd>
+</application>
+
+</server>
