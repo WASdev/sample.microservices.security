@@ -10,14 +10,14 @@ ext {
 
 buildscript {
 	repositories {
+		mavenCentral()
 		maven {
 			name = 'Sonatype Nexus Snapshots'
 			url = 'https://oss.sonatype.org/content/repositories/snapshots/'
 		}
-		mavenCentral()
 	}
 	dependencies {
-		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin:1.0-SNAPSHOT'
+		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin:1.1-SNAPSHOT'
 		classpath files('gradle/wlp-anttasks.jar')
 	}
 }
@@ -57,13 +57,13 @@ task publishWar(dependsOn: ['jar','packaging'], type: Copy) {
 }
 
 liberty {
-	wlpDir = "${libertyBaseDir}/wlp"
+	installDir = "${libertyBaseDir}/wlp"
 	serverName = 'AccessTokenOpenIDRelyingParty'
 	userDir = '../access-token-rp-wlpcfg'
 
 	install {
 		licenseCode = "${projectLicenseCode}"
-		version = '8.5.5_06'
+		version = "${libertyVersion}"
 		baseDir = "${libertyBaseDir}"
 	}
 
@@ -73,11 +73,10 @@ liberty {
 	}
 
 	features {
-		name = ['servlet-3.1','jsp-2.3','openidconnectclient-1.0','openidconnectserver-1.0']
+		name = ['servlet-3.1,jsp-2.3,openidconnectclient-1.0,openidconnectserver-1.0']
 		acceptLicense = true
 		whenFileExists = 'ignore'
 	}
-
 }
 
 publishing {

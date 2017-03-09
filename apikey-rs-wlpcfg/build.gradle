@@ -15,7 +15,7 @@ buildscript {
 		mavenCentral()
 	}
 	dependencies {
-		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin:1.0-SNAPSHOT'
+		classpath 'net.wasdev.wlp.gradle.plugins:liberty-gradle-plugin-1.1-SNAPSHOT.jar'
 		classpath files('gradle/wlp-anttasks.jar')
 	}
 }
@@ -24,21 +24,21 @@ buildscript {
 repositories { mavenCentral(); }
 
 liberty {
-	wlpDir = "${libertyBaseDir}/wlp"
+	installDir = "${libertyBaseDir}/wlp"
 	serverName = 'ApiKeyMicroService'
-	
+
 	install {
 		licenseCode = "${projectLicenseCode}"
-		version = '8.5.5_06'
+		version = "${libertyVersion}"
 		baseDir = "${libertyBaseDir}"
 		cacheDir = "${buildDir}/cache"
 	}
-	
+
 	packageLiberty {
 		include = 'usr'
 		archive = "${buildDir}/ApiKeyMicroService.zip"
 	}
-	
+
 }
 
 // Copy server into the local usr dir
